@@ -61,9 +61,7 @@ services:
     image: cloudflare/cloudflared:latest
     container_name: cloudflared
     restart: unless-stopped
-    command: tunnel run
-    volumes:
-      - ./cloudflared:/etc/cloudflared
+    command: tunnel --no-autoupdate run --token ${TUNNEL_TOKEN}
 
   db_backup:
     image: prodrigestivill/postgres-backup-local:16

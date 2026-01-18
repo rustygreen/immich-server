@@ -66,7 +66,7 @@ cd homelab
 The interactive installer prompts for your:
 - 📧 Email (for Let's Encrypt certificates)
 - 🌐 Domain (e.g., `photos.example.com`)
-- 🔑 Cloudflare API Token & Tunnel credentials
+- 🔑 Cloudflare API Token & Tunnel token
 - 📂 Storage locations
 
 **That's it!** The script handles everything else automatically.
@@ -103,7 +103,7 @@ Before running the installer, you'll need:
 <details>
 <summary><strong>🚇 Cloudflare Tunnel</strong></summary>
 
-1. In Cloudflare Dashboard, go to **Zero Trust** → **Networks** → **Tunnels**
+1. In Cloudflare Dashboard, go to **Zero Trust** → **Networks** → **Connectors**
 2. Click **Create a tunnel**
 3. Name it (e.g., `immich-homelab`) and click **Save tunnel**
 4. On the connector setup page, select **Docker** and note the credentials:

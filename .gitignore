@@ -3,9 +3,6 @@
 .env.local
 .env.*.local
 
-# Cloudflare tunnel credentials
-cloudflared/credentials.json
-
 # PostgreSQL data
 pgdata/
 

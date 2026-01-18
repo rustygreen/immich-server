@@ -26,10 +26,10 @@ echo "🛑 Stopping containers..."
 docker compose down -v 2>/dev/null || true
 
 echo "🗑️  Removing generated files..."
-rm -f .env cloudflared/credentials.json
+rm -f .env
 
 echo "♻️  Resetting config files to placeholders..."
-git checkout -- caddy/Caddyfile cloudflared/config.yml scripts/verify.sh 2>/dev/null || true
+git checkout -- caddy/Caddyfile scripts/verify.sh 2>/dev/null || true
 
 echo ""
 echo "✅ Reset complete! Run './scripts/install.sh' to start fresh."
