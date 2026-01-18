@@ -7,7 +7,7 @@
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 <p align="center">
-  <img src="https://immich.app/img/immich-logo.svg" width="150" alt="Immich Logo">
+  <img src="https://immich.app/_app/immutable/assets/immich-logo-inline-dark.C4PioLn8.svg" width="150" alt="Immich Logo">
 </p>
 
 ## ✨ Features
