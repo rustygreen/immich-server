@@ -1,15 +1,61 @@
-# Immich Homelab (with ML)
+# 📸 Immich Homelab
 
-This repo deploys:
-- Immich
-- Immich Machine Learning
-- Postgres
-- Cloudflare Tunnel
-- Caddy (DNS-01, valid HTTPS on LAN/WAN)
+> **Self-hosted Google Photos alternative with machine learning, automated backups, and secure remote access.**
+
+[![Immich](https://img.shields.io/badge/Immich-Latest-blue?logo=docker)](https://immich.app)
+[![Cloudflare](https://img.shields.io/badge/Cloudflare-Tunnel-orange?logo=cloudflare)](https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+
+<p align="center">
+  <img src="https://immich.app/img/immich-logo.svg" width="150" alt="Immich Logo">
+</p>
+
+## ✨ Features
+
+| Feature | Description |
+|---------|-------------|
+| 🖼️ **Photo Management** | Upload, organize, and browse your photos with a beautiful UI |
+| 🤖 **Machine Learning** | Facial recognition, object detection, and smart search |
+| 🔒 **Secure Access** | HTTPS everywhere via Cloudflare Tunnel + Caddy |
+| 💾 **Auto Backups** | Scheduled PostgreSQL backups to NAS (7 daily, 4 weekly, 6 monthly) |
+| 🚀 **One-Command Setup** | Interactive installer handles all configuration |
+
+## 🏗️ Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                        Internet                              │
+└─────────────────────────┬───────────────────────────────────┘
+                          │
+                          ▼
+┌─────────────────────────────────────────────────────────────┐
+│                  Cloudflare Tunnel                          │
+└─────────────────────────┬───────────────────────────────────┘
+                          │
+          ┌───────────────┼───────────────┐
+          ▼               ▼               ▼
+     ┌─────────┐    ┌──────────┐    ┌──────────┐
+     │  Caddy  │    │  Immich  │◄───│ Immich   │
+     │  (TLS)  │───►│  Server  │    │    ML    │
+     └─────────┘    └────┬─────┘    └──────────┘
+                         │
+                         ▼
+          ┌──────────────┴──────────────┐
+          ▼                             ▼
+    ┌──────────┐                 ┌─────────────┐
+    │ Postgres │◄────────────────│  DB Backup  │
+    └──────────┘                 └──────┬──────┘
+                                        │
+                                        ▼
+                                 ┌─────────────┐
+                                 │  NAS/NFS    │
+                                 │  Storage    │
+                                 └─────────────┘
+```
 
 ---
 
-## Quick Start
+## 🚀 Quick Start
 
 ```bash
 git clone https://github.com/rustygreen/homelab
@@ -17,45 +63,50 @@ cd homelab
 ./scripts/install.sh
 ```
 
-The interactive installer will prompt you for:
-- Your email (for Let's Encrypt)
-- Your domain (e.g., `photos.example.com`)
-- Cloudflare API Token
-- Cloudflare Tunnel credentials
+The interactive installer prompts for your:
+- 📧 Email (for Let's Encrypt certificates)
+- 🌐 Domain (e.g., `photos.example.com`)
+- 🔑 Cloudflare API Token & Tunnel credentials
+- 📂 Storage locations
 
-That's it! The script handles all configuration automatically.
+**That's it!** The script handles everything else automatically.
 
 ---
 
-## Prerequisites
+## 📋 Prerequisites
 
 Before running the installer, you'll need:
 
-1. **A Linux server** (Ubuntu/Debian recommended)
-2. **A domain managed by Cloudflare**
-3. **Cloudflare API Token** — see [Step 1.1](#11-create-a-cloudflare-api-token-for-caddy-dns-01-challenge)
-4. **Cloudflare Tunnel** — see [Step 1.2](#12-create-a-cloudflare-tunnel)
+| Requirement | Details |
+|-------------|---------|
+| 🖥️ **Linux Server** | Ubuntu/Debian recommended |
+| 🌐 **Domain** | Managed by Cloudflare |
+| 🔑 **Cloudflare API Token** | [Create one →](#-cloudflare-api-token) |
+| 🚇 **Cloudflare Tunnel** | [Create one →](#-cloudflare-tunnel) |
 
 ---
 
-## Cloudflare Setup
+## ☁️ Cloudflare Setup
 
-#### 1.1 Create a Cloudflare API Token (for Caddy DNS-01 challenge)
+<details>
+<summary><strong>🔑 Cloudflare API Token</strong></summary>
 
 1. Log in to [Cloudflare Dashboard](https://dash.cloudflare.com)
 2. Go to **My Profile** → **API Tokens** → **Create Token**
 3. Use the **Edit zone DNS** template, or create a custom token with:
    - **Permissions:** `Zone > DNS > Edit`
    - **Zone Resources:** `Include > Specific zone > your-domain.com`
-4. Copy the token and save it for your `.env` file as `CF_API_TOKEN`
+4. Copy the token — you'll need it during installation
 
-#### 1.2 Create a Cloudflare Tunnel
+</details>
+
+<details>
+<summary><strong>🚇 Cloudflare Tunnel</strong></summary>
 
 1. In Cloudflare Dashboard, go to **Zero Trust** → **Networks** → **Tunnels**
 2. Click **Create a tunnel**
 3. Name it (e.g., `immich-homelab`) and click **Save tunnel**
-4. On the connector setup page, select **Docker** and note the credentials
-5. Copy the tunnel credentials JSON:
+4. On the connector setup page, select **Docker** and note the credentials:
    ```json
    {
      "AccountTag": "your-account-id",
@@ -63,13 +114,16 @@ Before running the installer, you'll need:
      "TunnelSecret": "base64-secret"
    }
    ```
-6. Configure the public hostname:
+5. Configure the public hostname:
    - **Subdomain:** `photos`
-   - **Domain:** `example.com` (your domain)
+   - **Domain:** your domain
    - **Service:** `http://immich:3001`
-7. Save the tunnel
+6. Save the tunnel
 
-#### 1.3 Add DNS Record (if not auto-created)
+</details>
+
+<details>
+<summary><strong>📡 DNS Record (if not auto-created)</strong></summary>
 
 1. Go to **DNS** → **Records** for your domain
 2. Add a CNAME record:
@@ -77,86 +131,96 @@ Before running the installer, you'll need:
    - **Target:** `<tunnel-id>.cfargotunnel.com`
    - **Proxy status:** Proxied (orange cloud)
 
+</details>
+
 ---
 
-### Step 2: NAS/Storage Setup (Optional NFS)
+## 💾 Storage Setup (Optional NFS)
+
+<details>
+<summary><strong>Configure NAS/NFS Mount</strong></summary>
 
 If using a Synology NAS or other NFS share:
 
 1. Enable NFS on your NAS and create a shared folder (e.g., `/volume1/photos`)
 2. Set permissions to allow your server's IP with read/write access
-3. Add the mount to `/etc/fstab` on your server:
-   ```bash
-   sudo nano /etc/fstab
-   ```
-   Add this line (adjust IP and path):
+3. Add to `/etc/fstab`:
    ```
    192.168.1.100:/volume1/photos  /mnt/photos  nfs  defaults,_netdev,auto,noatime,nofail,retry=5  0  0
    ```
-4. Mount the share:
+4. Mount:
    ```bash
    sudo mkdir -p /mnt/photos
    sudo mount -a
    ```
 
-> **Local storage?** Skip NFS and set `UPLOAD_LOCATION=./uploads` in your `.env` file.
+> 💡 **Using local storage?** Just set `UPLOAD_LOCATION=./uploads` during installation.
+
+</details>
 
 ---
 
-### Step 3: Run the Installer
+## 🛠️ Commands
 
+| Command | Description |
+|---------|-------------|
+| `docker compose logs -f` | View live logs |
+| `docker compose restart` | Restart all services |
+| `./scripts/update.sh` | Pull latest images & restart |
+| `./scripts/verify.sh` | Check stack health |
+| `./scripts/reset.sh` | Reset to fresh state |
+| `docker compose down` | Stop everything |
+
+---
+
+## 🔧 Troubleshooting
+
+<details>
+<summary><strong>Tunnel not connecting</strong></summary>
+
+Check that `cloudflared/credentials.json` matches your Cloudflare tunnel settings.
+
+</details>
+
+<details>
+<summary><strong>HTTPS certificate errors</strong></summary>
+
+Verify your `CF_API_TOKEN` has DNS edit permissions for your zone.
+
+</details>
+
+<details>
+<summary><strong>NFS mount fails</strong></summary>
+
+- Verify NAS IP and share path
+- Check NAS permissions allow your server's IP
+- Ensure `nfs-common` is installed: `sudo apt install nfs-common`
+
+</details>
+
+<details>
+<summary><strong>Photos not appearing</strong></summary>
+
+Verify `UPLOAD_LOCATION` exists and has correct permissions:
 ```bash
-git clone https://github.com/rustygreen/homelab
-cd homelab
-./scripts/install.sh
+ls -la /mnt/photos
 ```
 
-The interactive installer will:
-- Prompt for your domain, email, and Cloudflare credentials
-- Generate a secure database password automatically
-- Configure all files with your settings
-- Install Docker and dependencies
-- Pull and start all containers
+</details>
 
----
-
-### Step 4: Access Immich
-
-- **External (via Cloudflare Tunnel):** `https://photos.yourdomain.com`
-- **Local (via Caddy):** Same URL (if DNS resolves locally)
-
-On first visit, create your admin account and start uploading photos!
-
----
-
-## Useful Commands
+<details>
+<summary><strong>Need to start over?</strong></summary>
 
 ```bash
-# View logs
-docker compose logs -f
-
-# Restart stack
-docker compose restart
-
-# Update containers
-./scripts/update.sh
-
-# Verify stack health
-./scripts/verify.sh
-
-# Stop everything
-docker compose down
+./scripts/reset.sh
 ```
+
+This removes all config and lets you re-run the installer fresh.
+
+</details>
 
 ---
 
-## Troubleshooting
+## 📄 License
 
-| Issue | Solution |
-|-------|----------|
-| Tunnel not connecting | Check `cloudflared/credentials.json` matches your Cloudflare tunnel |
-| HTTPS certificate errors | Verify `CF_API_TOKEN` has DNS edit permissions |
-| NFS mount fails | Check NAS IP, permissions, and `nfs-common` is installed |
-| Photos not appearing | Verify `UPLOAD_LOCATION` path exists and has correct permissions |
-| Database connection failed | Check `.env` file was created correctly |
-| Need to reconfigure | Delete `.env` and `cloudflared/credentials.json`, then run `git checkout .` and re-run install |
+MIT © [Rusty Green](https://github.com/rustygreen)
