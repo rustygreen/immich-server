@@ -28,7 +28,10 @@ echo ""
 read -p "📂 Upload location [/mnt/photos/immich]: " UPLOAD_LOCATION
 UPLOAD_LOCATION="${UPLOAD_LOCATION:-/mnt/photos/immich}"
 
-read -p "🕐 Timezone [America/New_York]: " TZ
+read -p "� Backup location [/mnt/photos/backups]: " BACKUP_LOCATION
+BACKUP_LOCATION="${BACKUP_LOCATION:-/mnt/photos/backups}"
+
+read -p "�🕐 Timezone [America/New_York]: " TZ
 TZ="${TZ:-America/New_York}"
 
 # Generate a secure random password for the database
@@ -45,6 +48,7 @@ TZ=$TZ
 
 DB_PASSWORD=$DB_PASSWORD
 UPLOAD_LOCATION=$UPLOAD_LOCATION
+BACKUP_LOCATION=$BACKUP_LOCATION
 
 CF_API_TOKEN=$CF_API_TOKEN
 EOF

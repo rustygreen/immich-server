@@ -65,6 +65,27 @@ services:
     volumes:
       - ./cloudflared:/etc/cloudflared
 
+  db_backup:
+    image: prodrigestivill/postgres-backup-local:16
+    container_name: immich_db_backup
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_USER: immich
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: immich
+      SCHEDULE: "0 2 * * *"
+      BACKUP_KEEP_DAYS: 7
+      BACKUP_KEEP_WEEKS: 4
+      BACKUP_KEEP_MONTHS: 6
+      HEALTHCHECK_PORT: 8080
+      TZ: ${TZ}
+    volumes:
+      - ${BACKUP_LOCATION}:/backups
+
 volumes:
   caddy_data:
   caddy_config:

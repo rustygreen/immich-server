@@ -106,8 +106,8 @@ If using a Synology NAS or other NFS share:
 ### Step 3: Run the Installer
 
 ```bash
-git clone <this-repo>
-cd immich-homelab
+git clone https://github.com/rustygreen/homelab
+cd homelab
 ./scripts/install.sh
 ```
 
