@@ -103,17 +103,14 @@ Before running the installer, you'll need:
 <details>
 <summary><strong>🚇 Cloudflare Tunnel</strong></summary>
 
-1. In Cloudflare Dashboard, go to **Zero Trust** → **Networks** → **Connectors**
-2. Click **Create a tunnel**
+1. In Cloudflare Dashboard, go to **Zero Trust** → **Networks** → **Tunnels**
+2. Click **Create a tunnel** → Select **Cloudflared**
 3. Name it (e.g., `immich-homelab`) and click **Save tunnel**
-4. On the connector setup page, select **Docker** and note the credentials:
-   ```json
-   {
-     "AccountTag": "your-account-id",
-     "TunnelID": "your-tunnel-id",
-     "TunnelSecret": "base64-secret"
-   }
+4. On the connector setup page, select **Docker** and copy the **token** from the command:
    ```
+   docker run cloudflare/cloudflared:latest tunnel --no-autoupdate run --token eyJhIjoiYWJj...
+   ```
+   Copy just the token part (the long string after `--token`)
 5. Configure the public hostname:
    - **Subdomain:** `photos`
    - **Domain:** your domain
@@ -178,7 +175,7 @@ If using a Synology NAS or other NFS share:
 <details>
 <summary><strong>Tunnel not connecting</strong></summary>
 
-Check that `cloudflared/credentials.json` matches your Cloudflare tunnel settings.
+Verify your `TUNNEL_TOKEN` in `.env` matches the token from Cloudflare Zero Trust → Tunnels.
 
 </details>
 
