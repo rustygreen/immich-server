@@ -1,0 +1,7 @@
+tunnel: your-tunnel-name
+credentials-file: /etc/cloudflared/credentials.json
+
+ingress:
+  - hostname: photos.example.com
+    service: http://immich:3001
+  - service: http_status:404

@@ -1,0 +1,1 @@
+SYNOLOGY_IP:/volume1/photos  /mnt/photos  nfs  defaults,_netdev,auto,noatime,nofail,retry=5  0  0

@@ -1,0 +1,17 @@
+# Environment files with secrets
+.env
+.env.local
+.env.*.local
+
+# Cloudflare tunnel credentials
+cloudflared/credentials.json
+
+# PostgreSQL data
+pgdata/
+
+# ML model cache
+model-cache/
+
+# OS files
+.DS_Store
+Thumbs.db

@@ -1,0 +1,11 @@
+{
+  email you@example.com
+}
+
+photos.example.com {
+  tls {
+    dns cloudflare {env.CF_API_TOKEN}
+  }
+
+  reverse_proxy immich:3001
+}
