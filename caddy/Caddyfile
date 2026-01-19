@@ -1,5 +1,8 @@
 {
   email you@example.com
+  servers {
+    protocols h1 h2
+  }
 }
 
 photos.example.com {
