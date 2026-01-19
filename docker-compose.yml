@@ -57,13 +57,14 @@ services:
       - ./model-cache:/cache
 
   caddy:
-    image: caddy:2
+    image: slothcroissant/caddy-cloudflaredns:latest
     container_name: caddy
     restart: unless-stopped
     environment:
       CF_API_TOKEN: ${CF_API_TOKEN}
     ports:
       - "443:443"
+      - "80:80"
     volumes:
       - ./caddy/Caddyfile:/etc/caddy/Caddyfile
       - caddy_data:/data
