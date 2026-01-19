@@ -43,11 +43,12 @@ services:
       DB_PASSWORD: ${DB_PASSWORD}
       DB_DATABASE_NAME: immich
       REDIS_HOSTNAME: redis
+      IMMICH_MACHINE_LEARNING_URL: http://immich_ml:3003
       TZ: ${TZ}
     volumes:
       - ${UPLOAD_LOCATION}:/usr/src/app/upload
-    expose:
-      - "3001"
+    ports:
+      - "2283:2283"
 
   immich_ml:
     image: ghcr.io/immich-app/immich-machine-learning:release
