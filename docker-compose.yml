@@ -1,19 +1,28 @@
-version: "3.9"
-
 services:
   postgres:
-    image: postgres:16
+    image: tensorchord/pgvecto-rs:pg16-v0.2.0
     container_name: immich_postgres
     restart: unless-stopped
     environment:
       POSTGRES_USER: immich
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: immich
+      POSTGRES_INITDB_ARGS: '--data-checksums'
     volumes:
       - ./pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U immich"]
+      test: ["CMD-SHELL", "pg_isready -U immich -d immich"]
       interval: 30s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: immich_redis
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
       timeout: 5s
       retries: 5
 
@@ -24,6 +33,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_healthy
       immich_ml:
         condition: service_started
     environment:
@@ -31,6 +42,7 @@ services:
       DB_USERNAME: immich
       DB_PASSWORD: ${DB_PASSWORD}
       DB_DATABASE_NAME: immich
+      REDIS_HOSTNAME: redis
       TZ: ${TZ}
     volumes:
       - ${UPLOAD_LOCATION}:/usr/src/app/upload
