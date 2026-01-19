@@ -141,11 +141,16 @@ If using a Synology NAS or other NFS share:
 
 1. Enable NFS on your NAS and create a shared folder (e.g., `/volume1/photos`)
 2. Set permissions to allow your server's IP with read/write access
-3. Add to `/etc/fstab`:
+3. On your Linux server, edit the filesystem table:
+   ```bash
+   sudo nano /etc/fstab
+   ```
+4. Add this line at the end (replace the IP and path with your NAS details):
    ```
    192.168.1.100:/volume1/photos  /mnt/photos  nfs  defaults,_netdev,auto,noatime,nofail,retry=5  0  0
    ```
-4. Mount:
+5. Save and exit (`Ctrl+X`, then `Y`, then `Enter`)
+6. Mount the share:
    ```bash
    sudo mkdir -p /mnt/photos
    sudo mount -a
