@@ -7,5 +7,5 @@ photos.example.com {
     dns cloudflare {env.CF_API_TOKEN}
   }
 
-  reverse_proxy immich:3001
+  reverse_proxy immich:2283
 }
