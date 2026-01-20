@@ -56,6 +56,10 @@ services:
     restart: unless-stopped
     volumes:
       - ./model-cache:/cache
+    deploy:
+      resources:
+        limits:
+          memory: 4G
 
   caddy:
     image: slothcroissant/caddy-cloudflaredns:latest
