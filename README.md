@@ -147,8 +147,9 @@ If using a Synology NAS or other NFS share:
    ```
 4. Add this line at the end (replace the IP and path with your NAS details):
    ```
-   192.168.1.100:/volume1/photos  /mnt/photos  nfs  defaults,_netdev,auto,noatime,nofail,retry=5  0  0
+   192.168.1.100:/volume1/photos  /mnt/photos  nfs  defaults,_netdev,nofail,soft,timeo=30,retrans=3,noatime  0  0
    ```
+   > ⚠️ The `soft,timeo=30,retrans=3` options are important - they prevent system hangs if the NAS disconnects.
 5. Save and exit (`Ctrl+X`, then `Y`, then `Enter`)
 6. Mount the share:
    ```bash
@@ -162,6 +163,40 @@ If using a Synology NAS or other NFS share:
 
 ---
 
+## ⚙️ Configuration
+
+All configuration is done through the `.env` file. No need to modify any other files.
+
+| Variable | Description |
+|----------|-------------|
+| `TZ` | Timezone (e.g., `America/New_York`) |
+| `DB_PASSWORD` | PostgreSQL password (auto-generated) |
+| `UPLOAD_LOCATION` | Where photos are stored |
+| `BACKUP_LOCATION` | Where database backups go |
+| `ACME_EMAIL` | Email for Let's Encrypt certificates |
+| `DOMAIN` | Your photos domain (e.g., `photos.example.com`) |
+| `CF_API_TOKEN` | Cloudflare API token for DNS challenges |
+| `TUNNEL_TOKEN` | Cloudflare Tunnel token |
+
+<details>
+<summary><strong>Import Script Settings (Optional)</strong></summary>
+
+If you want to use the bulk import script (`./scripts/import-photos.sh`), add these to your `.env`:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `IMMICH_API_KEY` | (required) | Your Immich API key |
+| `IMPORT_DIR` | `/mnt/photos/upload` | Source folder for imports |
+| `IMPORT_IMMICH_URL` | `http://immich:2283` | Immich server URL |
+| `IMPORT_DELAY` | `30` | Seconds between folder imports |
+| `IMPORT_DELETE_ON_SUCCESS` | `true` | Delete source after import |
+
+Get your API key from Immich: **Account Settings → API Keys → New API Key**
+
+</details>
+
+---
+
 ## 🛠️ Commands
 
 | Command | Description |
@@ -170,6 +205,7 @@ If using a Synology NAS or other NFS share:
 | `docker compose restart` | Restart all services |
 | `./scripts/update.sh` | Pull latest images & restart |
 | `./scripts/verify.sh` | Check stack health |
+| `./scripts/import-photos.sh` | Bulk import photos (requires API key in .env) |
 | `./scripts/reset.sh` | Reset to fresh state |
 | `docker compose down` | Stop everything |
 
@@ -192,11 +228,12 @@ Verify your `CF_API_TOKEN` has DNS edit permissions for your zone.
 </details>
 
 <details>
-<summary><strong>NFS mount fails</strong></summary>
+<summary><strong>NFS mount fails or system hangs</strong></summary>
 
-- Verify NAS IP and share path
+- Verify NAS IP and share path with `showmount -e <NAS_IP>`
 - Check NAS permissions allow your server's IP
 - Ensure `nfs-common` is installed: `sudo apt install nfs-common`
+- Use `soft` mount option to prevent hangs: add `soft,timeo=30,retrans=3` to fstab
 
 </details>
 
