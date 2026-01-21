@@ -48,19 +48,12 @@ DB_PASSWORD=$DB_PASSWORD
 UPLOAD_LOCATION=$UPLOAD_LOCATION
 BACKUP_LOCATION=$BACKUP_LOCATION
 
+ACME_EMAIL=$USER_EMAIL
+DOMAIN=$USER_DOMAIN
 CF_API_TOKEN=$CF_API_TOKEN
 TUNNEL_TOKEN=$TUNNEL_TOKEN
 EOF
 echo "✅ Created .env"
-
-# Update Caddyfile with user's domain and email
-sed -i "s/you@example.com/$USER_EMAIL/g" caddy/Caddyfile
-sed -i "s/photos.example.com/$USER_DOMAIN/g" caddy/Caddyfile
-echo "✅ Configured caddy/Caddyfile"
-
-# Update verify script with user's domain
-sed -i "s/photos.example.com/$USER_DOMAIN/g" scripts/verify.sh
-echo "✅ Configured scripts/verify.sh"
 
 echo ""
 echo "============================================"

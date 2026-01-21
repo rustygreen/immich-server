@@ -1,11 +1,11 @@
 {
-  email you@example.com
+  email {env.ACME_EMAIL}
   servers {
     protocols h1 h2
   }
 }
 
-photos.example.com {
+{env.DOMAIN} {
   tls {
     dns cloudflare {env.CF_API_TOKEN}
   }
