@@ -21,6 +21,7 @@ IMMICH_URL="${IMPORT_IMMICH_URL:-http://immich:2283}"
 IMMICH_API_KEY="${IMMICH_API_KEY:-your_immich_api_key_here}"
 DELAY_BETWEEN_FOLDERS="${IMPORT_DELAY:-30}"
 DELETE_FOLDER_ON_SUCCESS="${IMPORT_DELETE_ON_SUCCESS:-true}"
+DOCKER_NETWORK="${IMPORT_DOCKER_NETWORK:-homelab_default}"
 # ===========================================
 
 # Count total folders
@@ -34,6 +35,7 @@ echo "========================================"
 echo "Found $TOTAL folders to import"
 echo "Delay between folders: ${DELAY_BETWEEN_FOLDERS}s"
 echo "Delete folders on success: $DELETE_FOLDER_ON_SUCCESS"
+echo "Docker network: $DOCKER_NETWORK"
 echo ""
 
 for FOLDER in "${FOLDERS[@]}"; do
@@ -44,7 +46,7 @@ for FOLDER in "${FOLDERS[@]}"; do
     echo "[$CURRENT/$TOTAL] Importing: $FOLDER_NAME"
     echo "----------------------------------------"
     
-    docker run --rm --network homelab_default \
+    docker run --rm --network "$DOCKER_NETWORK" \
         -v "$FOLDER:/import:ro" \
         -e IMMICH_INSTANCE_URL="$IMMICH_URL" \
         -e IMMICH_API_KEY="$IMMICH_API_KEY" \

@@ -86,6 +86,10 @@ echo "📁 Creating photo mount directory..."
 sudo mkdir -p /mnt/photos
 sudo chown 1000:1000 /mnt/photos
 
+echo "📁 Creating local SSD cache directories..."
+sudo mkdir -p /srv/immich/{thumbs,encoded-video,upload,profile}
+sudo chown -R 1000:1000 /srv/immich
+
 echo ""
 echo "============================================"
 echo "   Starting Immich stack..."

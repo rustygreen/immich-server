@@ -39,19 +39,30 @@
      │  (TLS)  │───►│  Server  │    │    ML    │
      └─────────┘    └────┬─────┘    └──────────┘
                          │
-                         ▼
-          ┌──────────────┴──────────────┐
-          ▼                             ▼
-    ┌──────────┐                 ┌─────────────┐
-    │ Postgres │◄────────────────│  DB Backup  │
-    └──────────┘                 └──────┬──────┘
-                                        │
-                                        ▼
-                                 ┌─────────────┐
-                                 │  NAS/NFS    │
-                                 │  Storage    │
-                                 └─────────────┘
+         ┌───────────────┼───────────────┐
+         ▼               ▼               ▼
+   ┌──────────┐   ┌─────────────┐  ┌─────────────┐
+   │ Postgres │   │ Local SSD   │  │  NAS/NFS    │
+   └──────────┘   │ /srv/immich │  │ /mnt/photos │
+                  │ (thumbnails,│  │ (originals, │
+                  │  transcodes)│  │  backups)   │
+                  └─────────────┘  └──────┬──────┘
+                                          │
+                                   ┌──────┴──────┐
+                                   │  DB Backup  │
+                                   └─────────────┘
 ```
+
+### Storage Layout
+
+| Data | Location | Why |
+|------|----------|-----|
+| **Originals** (library) | NAS `/mnt/photos/immich/library` | Large files, accessed less frequently |
+| **DB Backups** | NAS `/mnt/photos/immich/backups` | Safe off-server backup |
+| **Thumbnails** | Local SSD `/srv/immich/thumbs` | Fast access, regenerable |
+| **Transcoded Videos** | Local SSD `/srv/immich/encoded-video` | Fast access, regenerable |
+| **Upload Buffer** | Local SSD `/srv/immich/upload` | Fast writes during upload |
+| **Profiles** | Local SSD `/srv/immich/profile` | Small files |
 
 ---
 
@@ -157,9 +168,22 @@ If using a Synology NAS or other NFS share:
    sudo mount -a
    ```
 
-> 💡 **Using local storage?** Just set `UPLOAD_LOCATION=./uploads` during installation.
+> 💡 **Using local storage only?** Set `UPLOAD_LOCATION=/srv/immich` to keep everything on local SSD.
 
 </details>
+
+---
+
+## 🗄️ Storage Architecture
+
+This setup uses **split storage** for optimal performance and reliability:
+
+- **NAS (network)**: Original photos and backups — large files, accessed infrequently
+- **Local SSD**: Thumbnails and transcodes — frequently accessed, regenerable if lost
+
+This prevents NAS connectivity issues from breaking the UI, while keeping your originals safely on network storage.
+
+**Local cache location:** `/srv/immich/` (created automatically by installer)
 
 ---
 
@@ -171,12 +195,67 @@ All configuration is done through the `.env` file. No need to modify any other f
 |----------|-------------|
 | `TZ` | Timezone (e.g., `America/New_York`) |
 | `DB_PASSWORD` | PostgreSQL password (auto-generated) |
-| `UPLOAD_LOCATION` | Where photos are stored |
-| `BACKUP_LOCATION` | Where database backups go |
+| `UPLOAD_LOCATION` | Where original photos are stored (NAS) |
+| `BACKUP_LOCATION` | Where database backups go (NAS) |
 | `ACME_EMAIL` | Email for Let's Encrypt certificates |
 | `DOMAIN` | Your photos domain (e.g., `photos.example.com`) |
 | `CF_API_TOKEN` | Cloudflare API token for DNS challenges |
 | `TUNNEL_TOKEN` | Cloudflare Tunnel token |
+| `ML_URL` | Machine Learning URL (leave unset for local ML) |
+| `ML_PORT` | Port to expose ML service (default: `3003`) |
+| `ML_MEMORY` | Memory limit for ML container (default: `4G`) |
+
+<details>
+<summary><strong>🖥️ Multi-Node Setup (Optional)</strong></summary>
+
+You can offload the ML container to a second machine to reduce load on your main server.
+
+**On Main Node (NUC 1):**
+
+1. Edit `.env` and set ML_URL to point to your second node:
+   ```bash
+   ML_URL=http://192.168.1.101:3003
+   ```
+
+2. Start only the main services:
+   ```bash
+   docker compose --profile main up -d
+   ```
+
+**On ML Node (NUC 2):**
+
+1. Clone the repo:
+   ```bash
+   git clone https://github.com/rustygreen/homelab
+   cd homelab
+   ```
+
+2. Create a minimal `.env`:
+   ```bash
+   echo "ML_PORT=3003" > .env
+   echo "ML_MEMORY=4G" >> .env
+   ```
+
+3. Start only the ML service:
+   ```bash
+   docker compose --profile ml up -d
+   ```
+
+**Architecture with 2 nodes:**
+```
+┌─────────────────────┐         ┌─────────────────────┐
+│      NUC 1          │         │      NUC 2          │
+│  ┌───────────────┐  │         │  ┌───────────────┐  │
+│  │ Immich Server │──┼────────►│  │  Immich ML    │  │
+│  │ Postgres      │  │  HTTP   │  │  (port 3003)  │  │
+│  │ Redis         │  │         │  └───────────────┘  │
+│  │ Caddy         │  │         └─────────────────────┘
+│  │ Cloudflared   │  │
+│  └───────────────┘  │
+└─────────────────────┘
+```
+
+</details>
 
 <details>
 <summary><strong>Import Script Settings (Optional)</strong></summary>

@@ -3,6 +3,7 @@ services:
     image: tensorchord/pgvecto-rs:pg16-v0.2.0
     container_name: immich_postgres
     restart: unless-stopped
+    profiles: ["", "main"]
     environment:
       POSTGRES_USER: immich
       POSTGRES_PASSWORD: ${DB_PASSWORD}
@@ -20,6 +21,7 @@ services:
     image: redis:7-alpine
     container_name: immich_redis
     restart: unless-stopped
+    profiles: ["", "main"]
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -30,23 +32,29 @@ services:
     image: ghcr.io/immich-app/immich-server:release
     container_name: immich
     restart: unless-stopped
+    profiles: ["", "main"]
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
-      immich_ml:
-        condition: service_started
     environment:
       DB_HOSTNAME: postgres
       DB_USERNAME: immich
       DB_PASSWORD: ${DB_PASSWORD}
       DB_DATABASE_NAME: immich
       REDIS_HOSTNAME: redis
-      IMMICH_MACHINE_LEARNING_URL: http://immich_ml:3003
+      IMMICH_MACHINE_LEARNING_URL: ${ML_URL:-http://immich_ml:3003}
       TZ: ${TZ}
     volumes:
-      - ${UPLOAD_LOCATION}:/usr/src/app/upload
+      # Originals & backups on NAS
+      - ${UPLOAD_LOCATION}/library:/usr/src/app/upload/library
+      - ${UPLOAD_LOCATION}/backups:/usr/src/app/upload/backups
+      # Cache/regenerable data on local SSD
+      - /srv/immich/thumbs:/usr/src/app/upload/thumbs
+      - /srv/immich/encoded-video:/usr/src/app/upload/encoded-video
+      - /srv/immich/upload:/usr/src/app/upload/upload
+      - /srv/immich/profile:/usr/src/app/upload/profile
     ports:
       - "2283:2283"
 
@@ -54,17 +62,21 @@ services:
     image: ghcr.io/immich-app/immich-machine-learning:release
     container_name: immich_ml
     restart: unless-stopped
+    profiles: ["", "ml"]
     volumes:
       - ./model-cache:/cache
+    ports:
+      - "${ML_PORT:-3003}:3003"
     deploy:
       resources:
         limits:
-          memory: 4G
+          memory: ${ML_MEMORY:-4G}
 
   caddy:
     image: slothcroissant/caddy-cloudflaredns:latest
     container_name: caddy
     restart: unless-stopped
+    profiles: ["", "main"]
     environment:
       ACME_EMAIL: ${ACME_EMAIL}
       DOMAIN: ${DOMAIN}
@@ -81,12 +93,14 @@ services:
     image: cloudflare/cloudflared:latest
     container_name: cloudflared
     restart: unless-stopped
+    profiles: ["", "main"]
     command: tunnel --no-autoupdate run --token ${TUNNEL_TOKEN}
 
   db_backup:
     image: prodrigestivill/postgres-backup-local:16
     container_name: immich_db_backup
     restart: unless-stopped
+    profiles: ["", "main"]
     depends_on:
       postgres:
         condition: service_healthy

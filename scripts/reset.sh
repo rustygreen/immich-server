@@ -13,6 +13,7 @@ echo "   - Remove .env and cloudflared/credentials.json"
 echo "   - Reset config files to placeholders"
 echo ""
 echo "   Photos on NFS (/mnt/photos) will NOT be deleted."
+echo "   Local cache (/srv/immich) will NOT be deleted."
 echo ""
 read -p "Are you sure? (y/N): " CONFIRM
 
