@@ -47,10 +47,8 @@ services:
       IMMICH_MACHINE_LEARNING_URL: ${ML_URL:-http://immich_ml:3003}
       TZ: ${TZ}
     volumes:
-      # Originals & backups on NAS
-      - ${UPLOAD_LOCATION}/library:/usr/src/app/upload/library
-      - ${UPLOAD_LOCATION}/backups:/usr/src/app/upload/backups
-      # Cache/regenerable data on local SSD
+      # All Immich data on local SSD
+      - /srv/immich/library:/usr/src/app/upload/library
       - /srv/immich/thumbs:/usr/src/app/upload/thumbs
       - /srv/immich/encoded-video:/usr/src/app/upload/encoded-video
       - /srv/immich/upload:/usr/src/app/upload/upload
@@ -116,7 +114,7 @@ services:
       HEALTHCHECK_PORT: 8080
       TZ: ${TZ}
     volumes:
-      - ${BACKUP_LOCATION}:/backups
+      - /srv/immich/backups:/backups
 
 volumes:
   caddy_data:
