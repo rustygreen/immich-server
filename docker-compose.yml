@@ -53,6 +53,7 @@ services:
       - /srv/immich/encoded-video:/usr/src/app/upload/encoded-video
       - /srv/immich/upload:/usr/src/app/upload/upload
       - /srv/immich/profile:/usr/src/app/upload/profile
+      - /srv/immich/backups:/usr/src/app/upload/backups
     ports:
       - "2283:2283"
 
