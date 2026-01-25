@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -e
+set -euo pipefail
 
 # Backup Immich data from local SSD to NAS
 # Run this via cron: 0 3 * * * /home/rusty/homelab/scripts/backup-to-nas.sh
@@ -29,16 +29,29 @@ log "Starting backup to NAS..."
 # Create backup directory on NAS if it doesn't exist
 mkdir -p "$BACKUP_DEST"
 
+# Rsync options:
+#   --no-group --no-perms: Don't try to set permissions (NFS doesn't allow)
+#   --times: Preserve modification times
+#   --delete: Remove files from dest that don't exist in source
+#   --timeout=300: 5 minute timeout for stalled transfers
+RSYNC_OPTS="-av --no-group --no-perms --times --delete --timeout=300"
+
 # Sync library (original photos) - this is the important one
 log "Syncing library..."
-rsync -av --delete --progress "$LOCAL_DATA/library/" "$BACKUP_DEST/library/" 2>&1 | tee -a "$LOG_FILE"
+if ! rsync $RSYNC_OPTS "$LOCAL_DATA/library/" "$BACKUP_DEST/library/" 2>&1 | tee -a "$LOG_FILE"; then
+    log "ERROR: Library sync failed!"
+    exit 1
+fi
 
 # Sync database backups
 log "Syncing database backups..."
-rsync -av --delete --progress "$LOCAL_DATA/backups/" "$BACKUP_DEST/backups/" 2>&1 | tee -a "$LOG_FILE"
+if ! rsync $RSYNC_OPTS "$LOCAL_DATA/backups/" "$BACKUP_DEST/backups/" 2>&1 | tee -a "$LOG_FILE"; then
+    log "ERROR: Database backup sync failed!"
+    exit 1
+fi
 
 # Optional: sync thumbnails (can be regenerated, but saves time)
 # log "Syncing thumbnails..."
-# rsync -av --delete --progress "$LOCAL_DATA/thumbs/" "$BACKUP_DEST/thumbs/" 2>&1 | tee -a "$LOG_FILE"
+# rsync $RSYNC_OPTS "$LOCAL_DATA/thumbs/" "$BACKUP_DEST/thumbs/" 2>&1 | tee -a "$LOG_FILE"
 
 log "Backup completed successfully!"
