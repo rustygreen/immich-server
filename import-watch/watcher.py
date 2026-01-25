@@ -28,6 +28,9 @@ IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.gif', '.webp', '.heic', '.heif', 
 VIDEO_EXTENSIONS = {'.mp4', '.mov', '.avi', '.mkv', '.webm', '.m4v', '.3gp', '.mts', '.m2ts'}
 SUPPORTED_EXTENSIONS = IMAGE_EXTENSIONS | VIDEO_EXTENSIONS
 
+# How long a file must be unchanged before processing (seconds)
+FILE_STABILITY_SECONDS = 5
+
 
 def load_config(config_path: str) -> dict:
     """Load configuration from YAML file."""
@@ -46,6 +49,41 @@ def get_users_from_env() -> dict:
             users[username] = value
             
     return users
+
+
+def is_file_stable(file_path: Path, stability_seconds: int = FILE_STABILITY_SECONDS) -> bool:
+    """Check if a file has stopped being written to (size unchanged for stability_seconds)."""
+    try:
+        if not file_path.exists():
+            return False
+        
+        initial_size = file_path.stat().st_size
+        initial_mtime = file_path.stat().st_mtime
+        
+        # If file was modified very recently, it might still be copying
+        if time.time() - initial_mtime < stability_seconds:
+            return False
+        
+        # Double-check by waiting a moment and comparing
+        time.sleep(1)
+        
+        if not file_path.exists():
+            return False
+            
+        current_size = file_path.stat().st_size
+        
+        # Size changed = still copying
+        if current_size != initial_size:
+            return False
+        
+        # File with 0 bytes is likely still being created
+        if current_size == 0:
+            return False
+            
+        return True
+        
+    except (OSError, IOError):
+        return False
 
 
 def upload_file(file_path: Path, api_key: str, immich_url: str) -> bool:
@@ -95,9 +133,10 @@ def upload_file(file_path: Path, api_key: str, immich_url: str) -> bool:
         return False
 
 
-def process_directory(user_dir: Path, api_key: str, immich_url: str, delete_after: bool) -> int:
-    """Process all files in a user's directory."""
+def process_directory(user_dir: Path, api_key: str, immich_url: str, delete_after: bool) -> tuple[int, int]:
+    """Process all files in a user's directory. Returns (uploaded, skipped) counts."""
     uploaded = 0
+    skipped = 0
     
     # Collect all files first (as a list) to avoid iterator issues when deleting
     all_files = [f for f in user_dir.rglob('*') if f.is_file()]
@@ -116,6 +155,12 @@ def process_directory(user_dir: Path, api_key: str, immich_url: str, delete_afte
             logger.debug(f"Skipping unsupported file: {file_path.name}")
             continue
         
+        # Wait for file to be stable (not actively being written)
+        if not is_file_stable(file_path):
+            logger.debug(f"Skipping (still copying): {file_path.name}")
+            skipped += 1
+            continue
+        
         # Try to upload
         if upload_file(file_path, api_key, immich_url):
             uploaded += 1
@@ -124,20 +169,24 @@ def process_directory(user_dir: Path, api_key: str, immich_url: str, delete_afte
                     file_path.unlink()
                     logger.info(f"Deleted: {file_path.name}")
                     
-                    # Clean up empty directories
+                    # Clean up empty directories (only if directory is truly empty)
                     parent = file_path.parent
                     while parent != user_dir and parent.exists():
                         try:
-                            if not any(parent.iterdir()):
+                            # Double-check directory is empty before removing
+                            contents = list(parent.iterdir())
+                            if not contents:
                                 parent.rmdir()
                                 logger.debug(f"Removed empty directory: {parent}")
+                            else:
+                                break  # Directory has contents, stop cleanup
                         except OSError:
                             break
                         parent = parent.parent
                 except Exception as e:
                     logger.error(f"Error deleting {file_path.name}: {e}")
     
-    return uploaded
+    return uploaded, skipped
 
 
 def main():
@@ -177,6 +226,7 @@ def main():
     while True:
         try:
             total_uploaded = 0
+            total_skipped = 0
             
             for username, api_key in users.items():
                 user_dir = watch_dir / username
@@ -190,17 +240,17 @@ def main():
                 
                 if file_count > 0:
                     logger.info(f"Processing {file_count} files for {username}...")
-                    uploaded = process_directory(user_dir, api_key, immich_url, delete_after)
+                    uploaded, skipped = process_directory(user_dir, api_key, immich_url, delete_after)
                     total_uploaded += uploaded
+                    total_skipped += skipped
             
-            if total_uploaded > 0:
-                logger.info(f"Scan complete. Uploaded {total_uploaded} files.")
+            if total_uploaded > 0 or total_skipped > 0:
+                logger.info(f"Scan complete. Uploaded: {total_uploaded}, Still copying: {total_skipped}")
             
         except Exception as e:
             logger.error(f"Error during scan: {e}")
         
         time.sleep(scan_interval)
-
 
 if __name__ == '__main__':
     main()
