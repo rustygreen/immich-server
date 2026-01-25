@@ -99,9 +99,12 @@ def process_directory(user_dir: Path, api_key: str, immich_url: str, delete_afte
     """Process all files in a user's directory."""
     uploaded = 0
     
-    # Find all files recursively
-    for file_path in user_dir.rglob('*'):
-        if not file_path.is_file():
+    # Collect all files first (as a list) to avoid iterator issues when deleting
+    all_files = [f for f in user_dir.rglob('*') if f.is_file()]
+    
+    for file_path in all_files:
+        # Skip if file was already deleted (e.g., by previous iteration)
+        if not file_path.exists():
             continue
             
         # Skip hidden files and temp files
@@ -123,10 +126,13 @@ def process_directory(user_dir: Path, api_key: str, immich_url: str, delete_afte
                     
                     # Clean up empty directories
                     parent = file_path.parent
-                    while parent != user_dir:
-                        if not any(parent.iterdir()):
-                            parent.rmdir()
-                            logger.debug(f"Removed empty directory: {parent}")
+                    while parent != user_dir and parent.exists():
+                        try:
+                            if not any(parent.iterdir()):
+                                parent.rmdir()
+                                logger.debug(f"Removed empty directory: {parent}")
+                        except OSError:
+                            break
                         parent = parent.parent
                 except Exception as e:
                     logger.error(f"Error deleting {file_path.name}: {e}")
