@@ -1,4 +1,4 @@
-# 📸 Immich Homelab
+# 📸 Immich Server
 
 > **Self-hosted Google Photos alternative with machine learning, automated backups, and secure remote access.**
 
@@ -69,8 +69,8 @@
 ## 🚀 Quick Start
 
 ```bash
-git clone https://github.com/rustygreen/homelab
-cd homelab
+git clone https://github.com/rustygreen/immich-server
+cd immich-server
 ./scripts/install.sh
 ```
 
@@ -116,7 +116,7 @@ Before running the installer, you'll need:
 
 1. In Cloudflare Dashboard, go to **Zero Trust** → **Networks** → **Tunnels**
 2. Click **Create a tunnel** → Select **Cloudflared**
-3. Name it (e.g., `immich-homelab`) and click **Save tunnel**
+3. Name it (e.g., `immich-server`) and click **Save tunnel**
 4. On the connector setup page, select **Docker** and copy the **token** from the command:
    ```
    docker run cloudflare/cloudflared:latest tunnel --no-autoupdate run --token eyJhIjoiYWJj...
@@ -226,8 +226,8 @@ You can offload the ML container to a second machine to reduce load on your main
 
 1. Clone the repo:
    ```bash
-   git clone https://github.com/rustygreen/homelab
-   cd homelab
+   git clone https://github.com/rustygreen/immich-server
+   cd immich-server
    ```
 
 2. Create a minimal `.env`:
