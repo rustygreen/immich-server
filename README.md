@@ -274,6 +274,55 @@ Get your API key from Immich: **Account Settings → API Keys → New API Key**
 
 </details>
 
+<details>
+<summary><strong>📁 Import Watch Folders (Multi-User)</strong></summary>
+
+The **Import Watch** service monitors folders and automatically imports photos/videos to the correct user's Immich library.
+
+**Setup:**
+
+1. Get API keys for each user from Immich: **Account Settings → API Keys → New API Key**
+
+2. Add users to your `.env` file:
+   ```bash
+   ./scripts/add-import-user.sh rusty "your-api-key-here"
+   ./scripts/add-import-user.sh lauren "laurens-api-key"
+   ```
+   
+   Or manually add to `.env`:
+   ```bash
+   IMPORT_USER_RUSTY=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+   IMPORT_USER_LAUREN=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+   ```
+
+3. Build and start:
+   ```bash
+   docker compose up -d --build import_watch
+   ```
+
+4. Share the import folder on your network (optional):
+   - The default location is `/srv/immich/import`
+   - Share via Samba for Windows access
+
+**Folder structure:**
+```
+/srv/immich/import/
+├── rusty/      # Drop files here → imports to Rusty's library
+├── lauren/     # Drop files here → imports to Lauren's library
+├── miller/
+├── hunter/
+└── harper/
+```
+
+**Optional settings in `.env`:**
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `IMPORT_WATCH_DIR` | `/srv/immich/import` | Watch folder location |
+| `IMPORT_SCAN_INTERVAL` | `30` | Seconds between scans |
+| `IMPORT_DELETE_AFTER` | `true` | Delete files after import |
+
+</details>
+
 ---
 
 ## 🛠️ Commands

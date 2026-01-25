@@ -117,6 +117,21 @@ services:
     volumes:
       - /srv/immich/backups:/backups
 
+  import_watch:
+    build: ./import-watch
+    container_name: immich_import_watch
+    restart: unless-stopped
+    profiles: ["", "main"]
+    depends_on:
+      - immich
+    env_file:
+      - .env
+    volumes:
+      - ./import-watch/config.yaml:/config/config.yaml:ro
+      - ${IMPORT_WATCH_DIR:-/srv/immich/import}:/import
+    environment:
+      TZ: ${TZ}
+
 volumes:
   caddy_data:
   caddy_config:

@@ -1,0 +1,20 @@
+# Import Watch Configuration
+# User API keys are loaded from environment variables
+# Format: IMPORT_USER_<NAME>=<api_key>
+# Example: IMPORT_USER_RUSTY=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+
+immich_url: "http://immich:2283"
+
+# Watch directory inside container (mounted from host)
+watch_dir: "/import"
+
+# How often to scan for new files (seconds)
+scan_interval: 30
+
+# Delete files after successful import
+delete_after_import: true
+
+# Users are auto-discovered from IMPORT_USER_* environment variables
+# Add them to your .env file:
+#   IMPORT_USER_RUSTY=your-api-key
+#   IMPORT_USER_LAUREN=another-api-key
