@@ -1,17 +1,11 @@
 {
   email {env.ACME_EMAIL}
-  servers {
-    protocols h1 h2
-  }
 }
 
 {env.DOMAIN} {
   tls {
     dns cloudflare {env.CF_API_TOKEN}
   }
-
-  # Disable Alt-Svc header to prevent browsers from attempting HTTP/3
-  header -Alt-Svc
 
   reverse_proxy immich:2283
 }
