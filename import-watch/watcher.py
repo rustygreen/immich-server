@@ -17,6 +17,7 @@ import logging
 import requests
 import zipfile
 import shutil
+import hashlib
 from pathlib import Path
 from datetime import datetime
 
@@ -300,8 +301,98 @@ def process_zip_files(user_dir: Path, delete_after: bool) -> int:
     return processed
 
 
-def upload_file(file_path: Path, api_key: str, immich_url: str) -> bool:
-    """Upload a file to Immich using the API."""
+def calculate_file_hash(file_path: Path) -> str:
+    """Calculate SHA1 hash of a file (same algorithm Immich uses)."""
+    sha1 = hashlib.sha1()
+    with open(file_path, 'rb') as f:
+        while chunk := f.read(65536):  # 64KB chunks for better performance
+            sha1.update(chunk)
+    return sha1.hexdigest()
+
+
+def check_duplicates_bulk(file_paths: list[Path], api_key: str, immich_url: str) -> set[str]:
+    """
+    Check which files already exist in Immich using bulk check API.
+    Returns a set of file paths (as strings) that are duplicates.
+    """
+    if not file_paths:
+        return set()
+    
+    duplicates = set()
+    
+    try:
+        url = f"{immich_url}/api/assets/bulk-upload-check"
+        headers = {
+            'x-api-key': api_key,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        }
+        
+        # Calculate checksums for all files (with progress logging)
+        assets = []
+        total_files = len(file_paths)
+        logger.info(f"  Hashing {total_files} files...")
+        
+        for i, file_path in enumerate(file_paths):
+            try:
+                checksum = calculate_file_hash(file_path)
+                assets.append({
+                    'id': str(file_path),
+                    'checksum': checksum
+                })
+            except (OSError, IOError) as e:
+                logger.warning(f"Could not hash {file_path.name}: {e}")
+                continue
+            
+            # Log progress every 500 files
+            if (i + 1) % 500 == 0:
+                logger.info(f"  Hashed {i + 1}/{total_files} files...")
+        
+        if not assets:
+            return set()
+        
+        logger.info(f"  Checking {len(assets)} files against server...")
+        
+        # Process in batches of 5000 (same as Immich CLI)
+        batch_size = 5000
+        for batch_start in range(0, len(assets), batch_size):
+            batch = assets[batch_start:batch_start + batch_size]
+            
+            # Longer timeout for large batches
+            timeout = max(120, len(batch) // 50)  # At least 2 min, ~20ms per file
+            
+            response = requests.post(
+                url, 
+                headers=headers, 
+                json={'assets': batch}, 
+                timeout=timeout
+            )
+            
+            if response.status_code == 200:
+                result = response.json()
+                for item in result.get('results', []):
+                    if item.get('action') == 'reject' and item.get('reason') == 'duplicate':
+                        asset_id = item.get('id', '')
+                        duplicates.add(asset_id)
+            else:
+                logger.warning(f"Bulk check failed for batch: {response.status_code} {response.text[:200]}")
+        
+        logger.info(f"  Found {len(duplicates)} duplicates, {len(assets) - len(duplicates)} new files")
+        return duplicates
+            
+    except requests.exceptions.Timeout:
+        logger.warning("Bulk duplicate check timed out - falling back to upload-based dedup")
+        return set()
+    except Exception as e:
+        logger.warning(f"Bulk duplicate check failed: {e} - falling back to upload-based dedup")
+        return set()
+
+
+def upload_file(file_path: Path, api_key: str, immich_url: str) -> tuple[bool, bool]:
+    """
+    Upload a file to Immich using the API.
+    Returns (success, was_duplicate).
+    """
     try:
         url = f"{immich_url}/api/assets"
         
@@ -330,77 +421,103 @@ def upload_file(file_path: Path, api_key: str, immich_url: str) -> bool:
         
         if response.status_code in (200, 201):
             result = response.json()
-            if result.get('duplicate'):
+            is_duplicate = result.get('duplicate', False)
+            if is_duplicate:
                 logger.info(f"Duplicate skipped: {file_path.name}")
             else:
                 logger.info(f"Uploaded: {file_path.name}")
-            return True
+            return True, is_duplicate
         else:
             logger.error(f"Upload failed for {file_path.name}: {response.status_code} - {response.text}")
-            return False
+            return False, False
             
     except requests.exceptions.Timeout:
         logger.error(f"Timeout uploading {file_path.name}")
-        return False
+        return False, False
     except Exception as e:
         logger.error(f"Error uploading {file_path.name}: {e}")
-        return False
+        return False, False
 
 
-def process_directory(user_dir: Path, api_key: str, immich_url: str, delete_after: bool) -> tuple[int, int]:
-    """Process all files in a user's directory. Returns (uploaded, skipped) counts."""
+def process_directory(user_dir: Path, api_key: str, immich_url: str, delete_after: bool) -> tuple[int, int, int]:
+    """Process all files in a user's directory. Returns (uploaded, duplicates, skipped) counts."""
     uploaded = 0
+    duplicates = 0
     skipped = 0
     
-    # Collect all files first (as a list) to avoid iterator issues when deleting
-    all_files = [f for f in user_dir.rglob('*') if f.is_file()]
-    
-    for file_path in all_files:
-        # Skip if file was already deleted (e.g., by previous iteration)
-        if not file_path.exists():
+    # Collect all supported files first
+    all_files = []
+    for file_path in user_dir.rglob('*'):
+        if not file_path.is_file():
             continue
-            
-        # Skip hidden files and temp files
+        # Skip hidden files, temp files, and zip files
         if file_path.name.startswith('.') or file_path.name.startswith('~'):
             continue
-            
+        if file_path.suffix.lower() == '.zip':
+            continue
         # Check if supported extension
         if file_path.suffix.lower() not in SUPPORTED_EXTENSIONS:
-            logger.debug(f"Skipping unsupported file: {file_path.name}")
             continue
-        
         # Wait for file to be stable (not actively being written)
         if not is_file_stable(file_path):
             logger.debug(f"Skipping (still copying): {file_path.name}")
             skipped += 1
             continue
+        all_files.append(file_path)
+    
+    if not all_files:
+        return uploaded, duplicates, skipped
+    
+    # Check for duplicates in bulk (much faster than checking one by one)
+    duplicate_paths = check_duplicates_bulk(all_files, api_key, immich_url)
+    
+    for file_path in all_files:
+        # Skip if file was already deleted
+        if not file_path.exists():
+            continue
         
-        # Try to upload
-        if upload_file(file_path, api_key, immich_url):
-            uploaded += 1
+        # Check if this file is a duplicate (already in Immich)
+        if str(file_path) in duplicate_paths:
+            duplicates += 1
             if delete_after:
                 try:
                     file_path.unlink()
-                    logger.info(f"Deleted: {file_path.name}")
-                    
-                    # Clean up empty directories (only if directory is truly empty)
-                    parent = file_path.parent
-                    while parent != user_dir and parent.exists():
-                        try:
-                            # Double-check directory is empty before removing
-                            contents = list(parent.iterdir())
-                            if not contents:
-                                parent.rmdir()
-                                logger.debug(f"Removed empty directory: {parent}")
-                            else:
-                                break  # Directory has contents, stop cleanup
-                        except OSError:
-                            break
-                        parent = parent.parent
+                    cleanup_empty_parents(file_path, user_dir)
+                except Exception as e:
+                    logger.error(f"Error deleting duplicate {file_path.name}: {e}")
+            continue
+        
+        # Try to upload
+        success, was_duplicate = upload_file(file_path, api_key, immich_url)
+        if success:
+            if was_duplicate:
+                duplicates += 1
+            else:
+                uploaded += 1
+            if delete_after:
+                try:
+                    file_path.unlink()
+                    cleanup_empty_parents(file_path, user_dir)
                 except Exception as e:
                     logger.error(f"Error deleting {file_path.name}: {e}")
     
-    return uploaded, skipped
+    return uploaded, duplicates, skipped
+
+
+def cleanup_empty_parents(file_path: Path, stop_at: Path):
+    """Remove empty parent directories up to stop_at."""
+    parent = file_path.parent
+    while parent != stop_at and parent.exists():
+        try:
+            contents = list(parent.iterdir())
+            if not contents:
+                parent.rmdir()
+                logger.debug(f"Removed empty directory: {parent}")
+            else:
+                break
+        except OSError:
+            break
+        parent = parent.parent
 
 
 def main():
@@ -440,6 +557,7 @@ def main():
     while True:
         try:
             total_uploaded = 0
+            total_duplicates = 0
             total_skipped = 0
             total_zips = 0
             
@@ -459,14 +577,15 @@ def main():
                 
                 if file_count > 0:
                     logger.info(f"Processing {file_count} files for {username}...")
-                    uploaded, skipped = process_directory(user_dir, api_key, immich_url, delete_after)
+                    uploaded, duplicates, skipped = process_directory(user_dir, api_key, immich_url, delete_after)
                     total_uploaded += uploaded
+                    total_duplicates += duplicates
                     total_skipped += skipped
             
             if total_zips > 0:
                 logger.info(f"Extracted {total_zips} ZIP file(s)")
-            if total_uploaded > 0 or total_skipped > 0:
-                logger.info(f"Scan complete. Uploaded: {total_uploaded}, Still copying: {total_skipped}")
+            if total_uploaded > 0 or total_duplicates > 0 or total_skipped > 0:
+                logger.info(f"Scan complete. Uploaded: {total_uploaded}, Duplicates: {total_duplicates}, Still copying: {total_skipped}")
             
         except Exception as e:
             logger.error(f"Error during scan: {e}")
