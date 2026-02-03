@@ -19,6 +19,7 @@
 | 🔒 **Secure Access** | HTTPS everywhere via Cloudflare Tunnel + Caddy |
 | 💾 **Auto Backups** | Scheduled PostgreSQL backups to NAS (7 daily, 4 weekly, 6 monthly) |
 | 🚀 **One-Command Setup** | Interactive installer handles all configuration |
+| ☁️ **Cloud Backup** | Per-user backups to Proton Drive via rclone |
 
 ## 🏗️ Architecture
 
@@ -323,6 +324,77 @@ The **Import Watch** service monitors folders and automatically imports photos/v
 
 </details>
 
+<details>
+<summary><strong>☁️ Proton Drive Backup (Multi-User)</strong></summary>
+
+Backup each user's photos to their own Proton Drive account automatically.
+
+**Prerequisites:**
+
+1. Install rclone:
+   ```bash
+   curl https://rclone.org/install.sh | sudo bash
+   apt install jq  # For user ID lookup
+   ```
+
+2. Configure a Proton Drive remote for each user:
+   ```bash
+   rclone config
+   # Name: proton_rusty  (lowercase, matches PROTON_USER_RUSTY)
+   # Storage: protondrive
+   # Follow prompts to authenticate with Rusty's Proton account
+   
+   # Repeat for each user:
+   # proton_lauren, proton_miller, etc.
+   ```
+
+3. Get Immich user IDs:
+   - Go to **Immich → Administration → Users**
+   - Click on a user
+   - Copy the UUID from the URL: `/admin/users/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`
+
+4. Add to your `.env`:
+   ```bash
+   # Proton emails (determines rclone remote name)
+   PROTON_USER_RUSTY=rusty@proton.me
+   PROTON_USER_LAUREN=lauren@protonmail.com
+   
+   # Immich user IDs (maps username to library folder)
+   PROTON_IMMICH_ID_RUSTY=abc12345-6789-...
+   PROTON_IMMICH_ID_LAUREN=def98765-4321-...
+   ```
+
+5. Test with a dry run:
+   ```bash
+   ./scripts/backup-to-proton.sh --dry-run
+   ```
+
+6. Schedule daily backups (add to crontab):
+   ```bash
+   crontab -e
+   # Add this line:
+   0 3 * * * /path/to/homelab/scripts/backup-to-proton.sh
+   ```
+
+**How it works:**
+```
+/srv/immich/library/
+├── abc12345-.../     → proton_rusty:Photos/Immich/
+├── def98765-.../     → proton_lauren:Photos/Immich/
+└── ...
+```
+
+Each user's Immich library syncs to their personal Proton Drive with incremental updates.
+
+**Optional settings in `.env`:**
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `IMMICH_LIBRARY` | `/srv/immich/library` | Immich library location |
+| `PROTON_DEST_FOLDER` | `Photos/Immich` | Folder in Proton Drive |
+| `PROTON_LOG_FILE` | `/var/log/proton-backup.log` | Log file location |
+
+</details>
+
 ---
 
 ## 🛠️ Commands
@@ -334,6 +406,7 @@ The **Import Watch** service monitors folders and automatically imports photos/v
 | `./scripts/update.sh` | Pull latest images & restart |
 | `./scripts/verify.sh` | Check stack health |
 | `./scripts/import-photos.sh` | Bulk import photos (requires API key in .env) |
+| `./scripts/backup-to-proton.sh` | Backup photos to Proton Drive |
 | `./scripts/reset.sh` | Reset to fresh state |
 | `docker compose down` | Stop everything |
 
