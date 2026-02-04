@@ -227,12 +227,15 @@ def extract_zip_file(zip_path: Path, user_dir: Path) -> Path | None:
     extract_dir = user_dir / f"_extracted_{zip_path.stem}_{int(time.time())}"
     
     try:
-        # Validate ZIP file
-        if not zipfile.is_zipfile(zip_path):
-            logger.error(f"Invalid ZIP file: {zip_path.name}")
-            return None
-        
         file_size = zip_path.stat().st_size
+        
+        # Validate ZIP file structure
+        if not zipfile.is_zipfile(zip_path):
+            # Don't log as error - file is likely still uploading
+            # The stability check passed but ZIP end-of-central-directory isn't written yet
+            size_str = f"{file_size / (1024*1024*1024):.2f} GB" if file_size > 1024*1024*1024 else f"{file_size / (1024*1024):.1f} MB"
+            logger.debug(f"Skipping ZIP (not yet valid, possibly still uploading): {zip_path.name} ({size_str})")
+            return None
         size_str = f"{file_size / (1024*1024*1024):.2f} GB" if file_size > 1024*1024*1024 else f"{file_size / (1024*1024):.1f} MB"
         logger.info(f"Extracting: {zip_path.name} ({size_str})")
         
@@ -273,8 +276,12 @@ def process_zip_files(user_dir: Path, delete_after: bool) -> int:
     
     processed = 0
     for zip_path in zip_files:
+        # Use longer stability wait for large files (1GB+)
+        file_size = zip_path.stat().st_size
+        stability_wait = 30 if file_size > 1024*1024*1024 else 10
+        
         # Skip if file is still being written
-        if not is_file_stable(zip_path, stability_seconds=10):  # Longer wait for large ZIPs
+        if not is_file_stable(zip_path, stability_seconds=stability_wait):
             logger.debug(f"Skipping ZIP (still copying): {zip_path.name}")
             continue
         
