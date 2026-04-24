@@ -4,6 +4,10 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
+# If this repo was copied or checked out without executable bits (common on Windows/zip),
+# make the scripts runnable for the remainder of the setup.
+chmod +x "$SCRIPT_DIR"/*.sh 2>/dev/null || true
+
 cd "$PROJECT_DIR"
 
 echo "============================================"

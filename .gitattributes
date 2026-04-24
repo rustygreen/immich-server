@@ -1,0 +1,7 @@
+# Normalize line endings for shell scripts (avoid /bin/bash^M issues)
+*.sh text eol=lf
+
+# Docker and config files are typically LF as well
+Dockerfile text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf

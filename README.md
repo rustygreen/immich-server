@@ -75,6 +75,18 @@ cd immich-server
 ./scripts/install.sh
 ```
 
+If you see `Permission denied` when running a script, either make scripts executable:
+
+```bash
+chmod +x scripts/*.sh
+```
+
+or run them via bash:
+
+```bash
+bash ./scripts/install.sh
+```
+
 The interactive installer prompts for your:
 - 📧 Email (for Let's Encrypt certificates)
 - 🌐 Domain (e.g., `photos.example.com`)
