@@ -78,7 +78,9 @@ sync_user() {
     
     local rclone_remote="proton_${username}"
     local source_path="${IMMICH_LIBRARY}/${immich_user_id}"
-    local dest_path="${rclone_remote}:${PROTON_DEST_FOLDER}"
+    # PROTON_DEST_FOLDER supports {user} placeholder for per-user paths
+    local dest_subpath="${PROTON_DEST_FOLDER//\{user\}/$username}"
+    local dest_path="${rclone_remote}:${dest_subpath}"
     
     # Check if rclone remote exists
     if ! rclone listremotes | grep -q "^${rclone_remote}:$"; then
