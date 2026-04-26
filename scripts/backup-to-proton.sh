@@ -77,7 +77,10 @@ sync_user() {
     local immich_user_id="$3"
     
     local rclone_remote="proton_${username}"
-    local source_path="${IMMICH_LIBRARY}/${immich_user_id}"
+    # Allow per-user library folder override (e.g. PROTON_LIBRARY_DIR_RUSTY=admin)
+    local lib_var="PROTON_LIBRARY_DIR_${username^^}"
+    local lib_dir="${!lib_var:-$immich_user_id}"
+    local source_path="${IMMICH_LIBRARY}/${lib_dir}"
     # PROTON_DEST_FOLDER supports {user} placeholder for per-user paths
     local dest_subpath="${PROTON_DEST_FOLDER//\{user\}/$username}"
     local dest_path="${rclone_remote}:${dest_subpath}"
