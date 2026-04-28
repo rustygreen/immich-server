@@ -112,6 +112,9 @@ sync_user() {
         --progress \
         --transfers 4 \
         --checkers 8 \
+        --retries 10 \
+        --retries-sleep 30s \
+        --low-level-retries 20 \
         --log-file "$LOG_FILE" \
         --log-level INFO \
         --stats 30s \
