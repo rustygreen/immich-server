@@ -107,8 +107,12 @@ sync_user() {
     log "Syncing ${username}: ${file_count} files (${size}) -> ${dest_path}"
     
     # Perform sync
+    # --ignore-existing: skip files already at destination. Works around a
+    # protondrive bug where files get into a "ghost" state (invisible to lsf
+    # but POST returns "already exists"), causing infinite retry loops.
     rclone sync "$source_path" "$dest_path" \
         $DRY_RUN \
+        --ignore-existing \
         --progress \
         --transfers 4 \
         --checkers 8 \
